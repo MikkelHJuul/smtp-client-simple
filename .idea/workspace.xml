@@ -15,10 +15,14 @@
     </option>
   </component>
   <component name="GOROOT" path="$PROJECT_DIR$/../.." />
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
   <component name="GoLibraries">
     <option name="indexEntireGoPath" value="false" />
   </component>
   <component name="ProjectId" id="1jGgGOsxINnjp7z0H6gRMdDte1l" />
+  <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
@@ -83,6 +87,10 @@
       <screen x="0" y="27" width="1920" height="1020" />
     </state>
     <state x="743" y="294" width="424" height="484" key="FileChooserDialogImpl/0.27.1920.1020@0.27.1920.1020" timestamp="1603437632118" />
+    <state x="785" y="436" key="Github.ShareDialog" timestamp="1603450740555">
+      <screen x="0" y="27" width="1920" height="1020" />
+    </state>
+    <state x="785" y="436" key="Github.ShareDialog/0.27.1920.1020@0.27.1920.1020" timestamp="1603450740555" />
     <state width="1874" height="330" key="GridCell.Tab.0.bottom" timestamp="1603450280157">
       <screen x="0" y="27" width="1920" height="1020" />
     </state>
@@ -119,6 +127,10 @@
       <screen x="0" y="27" width="1920" height="1020" />
     </state>
     <state x="449" y="171" key="SettingsEditor/0.27.1920.1020@0.27.1920.1020" timestamp="1603437656086" />
+    <state x="555" y="272" width="800" height="528" key="Vcs.Push.Dialog.v2" timestamp="1603450791460">
+      <screen x="0" y="27" width="1920" height="1020" />
+    </state>
+    <state x="555" y="272" width="800" height="528" key="Vcs.Push.Dialog.v2/0.27.1920.1020@0.27.1920.1020" timestamp="1603450791460" />
     <state width="960" height="511" key="XDebugger.FullValuePopup" timestamp="1603437080187">
       <screen x="0" y="27" width="1920" height="1020" />
     </state>
