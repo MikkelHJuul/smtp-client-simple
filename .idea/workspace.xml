@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ChangeListManager">
+    <list default="true" id="ac38a876-8344-407d-a3e8-edf13bf12a9a" name="Default Changelist" comment="" />
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Go File" />
+      </list>
+    </option>
+  </component>
+  <component name="GOROOT" path="$PROJECT_DIR$/../.." />
+  <component name="GoLibraries">
+    <option name="indexEntireGoPath" value="false" />
+  </component>
+  <component name="ProjectId" id="1jGgGOsxINnjp7z0H6gRMdDte1l" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">
+    <property name="DefaultGoTemplateProperty" value="Go File" />
+    <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
+    <property name="WebServerToolWindowFactoryState" value="false" />
+    <property name="configurable.Global.GOPATH.is.expanded" value="true" />
+    <property name="configurable.Module.GOPATH.is.expanded" value="false" />
+    <property name="configurable.Project.GOPATH.is.expanded" value="true" />
+    <property name="go.import.settings.migrated" value="true" />
+    <property name="go.tried.to.enable.integration.vgo.integrator" value="true" />
+    <property name="last_opened_file_path" value="$USER_HOME$" />
+    <property name="settings.editor.selected.configurable" value="com.goide.configuration.GoLibrariesConfigurableProvider" />
+  </component>
+  <component name="RunManager">
+    <configuration name="go build smtp-client-simple" type="GoApplicationRunConfiguration" factoryName="Go Application" temporary="true" nameIsGenerated="true">
+      <module name="smtp-client-simple" />
+      <working_directory value="$PROJECT_DIR$" />
+      <kind value="DIRECTORY" />
+      <filePath value="$PROJECT_DIR$/main.go" />
+      <package value="smtp-client-simple" />
+      <directory value="$PROJECT_DIR$" />
+      <method v="2" />
+    </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Go Build.go build smtp-client-simple" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="VgoProject">
+    <integration-enabled>true</integration-enabled>
+  </component>
+  <component name="WindowStateProjectService">
+    <state x="755" y="372" width="400" height="327" key="#Go_Modules" timestamp="1603443743294">
+      <screen x="0" y="27" width="1920" height="1020" />
+    </state>
+    <state x="755" y="372" width="400" height="327" key="#Go_Modules/0.27.1920.1020@0.27.1920.1020" timestamp="1603443743294" />
+    <state x="418" y="194" key="#com.intellij.execution.impl.EditConfigurationsDialog" timestamp="1603443908871">
+      <screen x="0" y="27" width="1920" height="1020" />
+    </state>
+    <state x="418" y="194" key="#com.intellij.execution.impl.EditConfigurationsDialog/0.27.1920.1020@0.27.1920.1020" timestamp="1603443908871" />
+    <state x="664" y="338" width="581" height="396" key="#com.intellij.fileTypes.FileTypeChooser" timestamp="1603450525997">
+      <screen x="0" y="27" width="1920" height="1020" />
+    </state>
+    <state x="664" y="338" width="581" height="396" key="#com.intellij.fileTypes.FileTypeChooser/0.27.1920.1020@0.27.1920.1020" timestamp="1603450525997" />
+    <state x="693" y="285" width="524" height="502" key="#com.intellij.refactoring.safeDelete.UnsafeUsagesDialog" timestamp="1603450416386">
+      <screen x="0" y="27" width="1920" height="1020" />
+    </state>
+    <state x="693" y="285" width="524" height="502" key="#com.intellij.refactoring.safeDelete.UnsafeUsagesDialog/0.27.1920.1020@0.27.1920.1020" timestamp="1603450416386" />
+    <state x="718" y="280" key="#xdebugger.evaluate" timestamp="1603445715490">
+      <screen x="0" y="27" width="1920" height="1020" />
+    </state>
+    <state x="718" y="280" key="#xdebugger.evaluate/0.27.1920.1020@0.27.1920.1020" timestamp="1603445715490" />
+    <state x="743" y="294" width="424" height="484" key="FileChooserDialogImpl" timestamp="1603437632118">
+      <screen x="0" y="27" width="1920" height="1020" />
+    </state>
+    <state x="743" y="294" width="424" height="484" key="FileChooserDialogImpl/0.27.1920.1020@0.27.1920.1020" timestamp="1603437632118" />
+    <state width="1874" height="330" key="GridCell.Tab.0.bottom" timestamp="1603450280157">
+      <screen x="0" y="27" width="1920" height="1020" />
+    </state>
+    <state width="1874" height="330" key="GridCell.Tab.0.bottom/0.27.1920.1020@0.27.1920.1020" timestamp="1603450280157" />
+    <state width="1874" height="330" key="GridCell.Tab.0.center" timestamp="1603450280155">
+      <screen x="0" y="27" width="1920" height="1020" />
+    </state>
+    <state width="1874" height="330" key="GridCell.Tab.0.center/0.27.1920.1020@0.27.1920.1020" timestamp="1603450280155" />
+    <state width="1874" height="330" key="GridCell.Tab.0.left" timestamp="1603450280154">
+      <screen x="0" y="27" width="1920" height="1020" />
+    </state>
+    <state width="1874" height="330" key="GridCell.Tab.0.left/0.27.1920.1020@0.27.1920.1020" timestamp="1603450280154" />
+    <state width="1874" height="330" key="GridCell.Tab.0.right" timestamp="1603450280156">
+      <screen x="0" y="27" width="1920" height="1020" />
+    </state>
+    <state width="1874" height="330" key="GridCell.Tab.0.right/0.27.1920.1020@0.27.1920.1020" timestamp="1603450280156" />
+    <state width="1874" height="330" key="GridCell.Tab.1.bottom" timestamp="1603450280161">
+      <screen x="0" y="27" width="1920" height="1020" />
+    </state>
+    <state width="1874" height="330" key="GridCell.Tab.1.bottom/0.27.1920.1020@0.27.1920.1020" timestamp="1603450280161" />
+    <state width="1874" height="330" key="GridCell.Tab.1.center" timestamp="1603450280159">
+      <screen x="0" y="27" width="1920" height="1020" />
+    </state>
+    <state width="1874" height="330" key="GridCell.Tab.1.center/0.27.1920.1020@0.27.1920.1020" timestamp="1603450280159" />
+    <state width="1874" height="330" key="GridCell.Tab.1.left" timestamp="1603450280158">
+      <screen x="0" y="27" width="1920" height="1020" />
+    </state>
+    <state width="1874" height="330" key="GridCell.Tab.1.left/0.27.1920.1020@0.27.1920.1020" timestamp="1603450280158" />
+    <state width="1874" height="330" key="GridCell.Tab.1.right" timestamp="1603450280160">
+      <screen x="0" y="27" width="1920" height="1020" />
+    </state>
+    <state width="1874" height="330" key="GridCell.Tab.1.right/0.27.1920.1020@0.27.1920.1020" timestamp="1603450280160" />
+    <state x="449" y="171" key="SettingsEditor" timestamp="1603437656086">
+      <screen x="0" y="27" width="1920" height="1020" />
+    </state>
+    <state x="449" y="171" key="SettingsEditor/0.27.1920.1020@0.27.1920.1020" timestamp="1603437656086" />
+    <state width="960" height="511" key="XDebugger.FullValuePopup" timestamp="1603437080187">
+      <screen x="0" y="27" width="1920" height="1020" />
+    </state>
+    <state width="960" height="511" key="XDebugger.FullValuePopup/0.27.1920.1020@0.27.1920.1020" timestamp="1603437080187" />
+  </component>
+</project>
