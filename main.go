@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"net/smtp"
@@ -58,16 +59,16 @@ type SmtpHandler struct {
 func (smtpH* SmtpHandler) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
 	fmt.Println(req.RemoteAddr + " | " + req.Method + " " + req.URL.String())
 	if err := smtpH.sendMail(req); err != nil {
-		serverError(wr, req, err)
+		serverError(wr, err)
 	} else {
 		serveHTTP(wr, req)
 	}
 }
 
-func serverError(wr http.ResponseWriter, req *http.Request, err error) {
-	wr.Header().Add("Content-Type", "application/json")
+func serverError(wr http.ResponseWriter, err error) {
+	wr.Header().Add("Content-Type", "text/plain")
 	wr.WriteHeader(400)
-	fmt.Fprintf(wr, err.Error())
+	_, _ = fmt.Fprintf(wr, err.Error())
 }
 
 func (smtpH* SmtpHandler) sendMail(req *http.Request) error {
@@ -85,10 +86,16 @@ func (smtpH* SmtpHandler) sendMail(req *http.Request) error {
 			log.Print(err)
 		}
 	}
-	if toMail := valueOrDefault(req.FormValue("to"), smtpH.defaultTo); toMail == "" {
-		return errors.New("you have to set the query-parameter 'to'")
+	if toMail, ok := req.Form["to"]; !ok {
+		if smtpH.defaultTo != "" {
+			if err := c.Rcpt(smtpH.defaultTo); err != nil {
+				log.Print(err)
+			}
+		} else {
+			return errors.New("you have to set the query-parameter 'to'")
+		}
 	} else {
-		for _, mail := range strings.Split(toMail, ",") {
+		for _, mail := range toMail {
 			if err := c.Rcpt(mail); err != nil {
 				log.Print(err)
 			}
@@ -96,7 +103,7 @@ func (smtpH* SmtpHandler) sendMail(req *http.Request) error {
 	}
 
 	// Send the email body.
-	wc, err := c.Data()
+	wc, _ := c.Data()
 	if err != nil {
 		log.Print(err)
 	}
@@ -106,10 +113,14 @@ func (smtpH* SmtpHandler) sendMail(req *http.Request) error {
 	if err != nil {
 		log.Print(err)
 	}
-	if body := valueOrDefault(req.FormValue("body"), smtpH.defaultBody); body != "" {
-		_, err = fmt.Fprintf(wc, body)
-		if err != nil {
-			log.Print(err)
+	if emailMsg, err := ioutil.ReadAll(req.Body); err != nil {
+		log.Print(err)
+	} else {
+		if body := valueOrDefault(string(emailMsg), valueOrDefault(req.FormValue("msg"), smtpH.defaultBody)); body != "" {
+			_, err = fmt.Fprintf(wc, body)
+			if err != nil {
+				log.Print(err)
+			}
 		}
 	}
 	err = wc.Close()
@@ -130,12 +141,12 @@ func serveHTTP(wr http.ResponseWriter, req *http.Request) {
 	wr.Header().Add("Content-Type", "text/plain")
 	wr.WriteHeader(200)
 
-	fmt.Fprintf(wr, "%s %s %s\n", req.Proto, req.Method, req.URL)
-	fmt.Fprintln(wr, "")
-	fmt.Fprintf(wr, "Host: %s\n", req.Host)
+	_, _ = fmt.Fprintf(wr, "%s %s %s\n", req.Proto, req.Method, req.URL)
+	_, _ = fmt.Fprintln(wr, "")
+	_, _ = fmt.Fprintf(wr, "Host: %s\n", req.Host)
 	for key, values := range req.Form {
 		for _, value := range values {
-			fmt.Fprintf(wr, "%s: %s\n", key, value)
+			_, _ = fmt.Fprintf(wr, "%s: %s\n", key, value)
 		}
 	}
 }
