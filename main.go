@@ -23,7 +23,7 @@ func main() {
 		defaultSubject: valueFromENVorDefault("defaultSubject", ""),
 		defaultBody:    valueFromENVorDefault("defaultBody", ""),
 	}
-	
+
 	fmt.Printf("Smtp server listening on port %s.\n", port)
 	err := http.ListenAndServe(":"+port, &handler)
 	if err != nil {
@@ -33,11 +33,11 @@ func main() {
 
 //https://stackoverflow.com/questions/56616196/how-to-convert-camel-case-string-to-snake-case
 var matchFirstCap = regexp.MustCompile("(.)([A-Z][a-z]+)")
-var matchAllCap   = regexp.MustCompile("([a-z0-9])([A-Z])")
+var matchAllCap = regexp.MustCompile("([a-z0-9])([A-Z])")
 
 func toScreamingSnakeCase(str string) string {
 	snake := matchFirstCap.ReplaceAllString(str, "${1}_${2}")
-	snake  = matchAllCap.ReplaceAllString(snake, "${1}_${2}")
+	snake = matchAllCap.ReplaceAllString(snake, "${1}_${2}")
 	return strings.ToUpper(snake)
 }
 
@@ -56,7 +56,7 @@ type SmtpHandler struct {
 	smtpAddr, defaultFrom, defaultTo, defaultSubject, defaultBody string
 }
 
-func (smtpH* SmtpHandler) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
+func (smtpH *SmtpHandler) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
 	fmt.Println(req.RemoteAddr + " | " + req.Method + " " + req.URL.String())
 	if err := smtpH.sendMail(req); err != nil {
 		serverError(wr, err)
@@ -71,7 +71,7 @@ func serverError(wr http.ResponseWriter, err error) {
 	_, _ = fmt.Fprintf(wr, err.Error())
 }
 
-func (smtpH* SmtpHandler) sendMail(req *http.Request) error {
+func (smtpH *SmtpHandler) sendMail(req *http.Request) error {
 	// Connect to the remote SMTP server.
 	c, err := smtp.Dial(smtpH.smtpAddr)
 	if err != nil {
@@ -108,7 +108,7 @@ func (smtpH* SmtpHandler) sendMail(req *http.Request) error {
 		log.Print(err)
 	}
 	if subject := valueOrDefault(req.FormValue("subject"), smtpH.defaultSubject); subject != "" {
-		_, err = fmt.Fprintf(wc, "Subject: " + subject)
+		_, err = fmt.Fprintf(wc, "Subject: "+subject+"\n\n")
 	}
 	if err != nil {
 		log.Print(err)
@@ -135,7 +135,6 @@ func (smtpH* SmtpHandler) sendMail(req *http.Request) error {
 	}
 	return nil
 }
-
 
 func serveHTTP(wr http.ResponseWriter, req *http.Request) {
 	wr.Header().Add("Content-Type", "text/plain")
