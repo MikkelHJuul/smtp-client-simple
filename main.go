@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -124,14 +123,13 @@ func (smtpH *SmtpHandler) sendMail(req *http.Request) error {
 	if err != nil {
 		log.Print(err)
 	}
+	defer req.Body.Close()
 	emailMsg, err := ioutil.ReadAll(req.Body)
 	if err != nil {
 		log.Print(err)
 	}
 	if len(emailMsg) != 0 {
 		_, _ = wc.Write(emailMsg)
-		_ = req.Body.Close()
-		req.Body = ioutil.NopCloser(bytes.NewReader(emailMsg))
 	} else {
 		if body := valueOrDefault(req.FormValue("msg"), smtpH.defaultBody); body != "" {
 			_, err = wc.Write([]byte(body))
@@ -159,7 +157,6 @@ func serveHTTP(wr http.ResponseWriter, req *http.Request) {
 	wr.WriteHeader(200)
 
 	_, _ = fmt.Fprintf(wr, "%s %s %s\n", req.Proto, req.Method, req.URL)
-	_, _ = fmt.Fprintln(wr, "")
 	_, _ = fmt.Fprintf(wr, "Host: %s\n", req.Host)
 	for key, values := range req.Form {
 		for _, value := range values {
