@@ -127,7 +127,7 @@ func (smtpH *SmtpHandler) sendMail(req *http.Request) error {
 		log.Print(err)
 	} else {
 		if body := valueOrDefault(string(emailMsg), valueOrDefault(req.FormValue("msg"), smtpH.defaultBody)); body != "" {
-			_, err = fmt.Fprintf(wc, body)
+			_, err = wc.Write([]byte(body))
 			if err != nil {
 				log.Print(err)
 			}
