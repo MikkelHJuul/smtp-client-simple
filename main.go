@@ -96,7 +96,8 @@ func (smtpH *SmtpHandler) sendMail(req *http.Request) error {
 			log.Print(err)
 		}
 	}
-	if toMail, ok := req.Form["to"]; !ok {
+	toMail, ok := req.Form["to"]
+	if !ok {
 		if smtpH.defaultTo != "" {
 			if err := c.Rcpt(smtpH.defaultTo); err != nil {
 				log.Print(err)
@@ -104,16 +105,15 @@ func (smtpH *SmtpHandler) sendMail(req *http.Request) error {
 		} else {
 			return errors.New("you have to set the query-parameter 'to'")
 		}
-	} else {
-		for _, mail := range toMail {
-			if err := c.Rcpt(mail); err != nil {
-				log.Print(err)
-			}
+	}
+	for _, mail := range toMail {
+		if err := c.Rcpt(mail); err != nil {
+			log.Print(err)
 		}
 	}
 
 	// Send the email body.
-	wc, _ := c.Data()
+	wc, err := c.Data()
 	if err != nil {
 		log.Print(err)
 	}
@@ -123,16 +123,21 @@ func (smtpH *SmtpHandler) sendMail(req *http.Request) error {
 	if err != nil {
 		log.Print(err)
 	}
-	if emailMsg, err := ioutil.ReadAll(req.Body); err != nil {
+	emailMsg, err := ioutil.ReadAll(req.Body)
+	if err != nil {
 		log.Print(err)
+	}
+	if len(emailMsg) != 0 {
+		_, _ = wc.Write(emailMsg)
 	} else {
-		if body := valueOrDefault(string(emailMsg), valueOrDefault(req.FormValue("msg"), smtpH.defaultBody)); body != "" {
+		if body := valueOrDefault(req.FormValue("msg"), smtpH.defaultBody); body != "" {
 			_, err = wc.Write([]byte(body))
 			if err != nil {
 				log.Print(err)
 			}
 		}
 	}
+
 	err = wc.Close()
 	if err != nil {
 		log.Print(err)
