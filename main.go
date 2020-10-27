@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -129,6 +130,8 @@ func (smtpH *SmtpHandler) sendMail(req *http.Request) error {
 	}
 	if len(emailMsg) != 0 {
 		_, _ = wc.Write(emailMsg)
+		_ = req.Body.Close()
+		req.Body = ioutil.NopCloser(bytes.NewReader(emailMsg))
 	} else {
 		if body := valueOrDefault(req.FormValue("msg"), smtpH.defaultBody); body != "" {
 			_, err = wc.Write([]byte(body))
