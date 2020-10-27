@@ -14,7 +14,6 @@ import (
 
 func main() {
 	port := valueFromENVorDefault("port", "8080")
-
 	fmt.Printf("Initiating Handler")
 	handler := SmtpHandler{
 		smtpAddr:       valueFromENVorDefault("smtpAddr", ""),
@@ -22,6 +21,7 @@ func main() {
 		defaultTo:      valueFromENVorDefault("defaultTo", ""),
 		defaultSubject: valueFromENVorDefault("defaultSubject", ""),
 		defaultBody:    valueFromENVorDefault("defaultBody", ""),
+		lockFrom:       valueFromENVorDefault("lockFrom", ""),
 	}
 
 	fmt.Printf("Smtp server listening on port %s.\n", port)
@@ -53,7 +53,7 @@ func valueOrDefault(val string, deflt string) string {
 }
 
 type SmtpHandler struct {
-	smtpAddr, defaultFrom, defaultTo, defaultSubject, defaultBody string
+	smtpAddr, defaultFrom, defaultTo, defaultSubject, defaultBody, lockFrom string
 }
 
 func (smtpH *SmtpHandler) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
@@ -71,6 +71,16 @@ func serverError(wr http.ResponseWriter, err error) {
 	_, _ = fmt.Fprintf(wr, err.Error())
 }
 
+func (smtpH *SmtpHandler) getFromMail(requestFrom string) string {
+	if smtpH.lockFrom != "" {
+		return smtpH.lockFrom
+	}
+	if requestFrom != "" {
+		return requestFrom
+	}
+	return smtpH.defaultFrom
+}
+
 func (smtpH *SmtpHandler) sendMail(req *http.Request) error {
 	// Connect to the remote SMTP server.
 	c, err := smtp.Dial(smtpH.smtpAddr)
@@ -78,8 +88,8 @@ func (smtpH *SmtpHandler) sendMail(req *http.Request) error {
 		log.Print(err)
 	}
 
-	if fromMail := valueOrDefault(req.FormValue("from"), smtpH.defaultFrom); fromMail == "" {
-		return errors.New("you have to set the query-parameter 'from'")
+	if fromMail := smtpH.getFromMail(req.FormValue("from")); fromMail == "" {
+		return errors.New("you have to set the query-parameter 'from', or this server-instance is mis-configured")
 	} else {
 		// Set the sender and recipient first
 		if err := c.Mail(fromMail); err != nil {
