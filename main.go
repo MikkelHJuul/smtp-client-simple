@@ -81,62 +81,53 @@ func (smtpH *SmtpHandler) getFromMail(requestFrom string) string {
 	return smtpH.defaultFrom
 }
 
-func (smtpH *SmtpHandler) sendMail(req *http.Request) error {
-	// Connect to the remote SMTP server.
-	c, err := smtp.Dial(smtpH.smtpAddr)
+func printIf(err error) {
 	if err != nil {
 		log.Print(err)
 	}
+}
+
+func (smtpH *SmtpHandler) sendMail(req *http.Request) error {
+	// Connect to the remote SMTP server.
+	c, err := smtp.Dial(smtpH.smtpAddr)
+	printIf(err)
 
 	if fromMail := smtpH.getFromMail(req.FormValue("from")); fromMail == "" {
 		return errors.New("you have to set the query-parameter 'from', or this server-instance is mis-configured")
 	} else {
 		// Set the sender and recipient first
-		if err := c.Mail(fromMail); err != nil {
-			log.Print(err)
-		}
+		err = c.Mail(fromMail)
+		printIf(err)
 	}
 	toMail, ok := req.Form["to"]
 	if !ok {
 		if smtpH.defaultTo != "" {
-			if err := c.Rcpt(smtpH.defaultTo); err != nil {
-				log.Print(err)
-			}
+			err = c.Rcpt(smtpH.defaultTo)
+			printIf(err)
 		} else {
 			return errors.New("you have to set the query-parameter 'to'")
 		}
 	}
 	for _, mail := range toMail {
-		if err := c.Rcpt(mail); err != nil {
-			log.Print(err)
-		}
+		err = c.Rcpt(mail)
+		printIf(err)
 	}
 
 	// Send the email body.
 	wc, err := c.Data()
-	if err != nil {
-		log.Print(err)
-	}
+	printIf(err)
 	emailMsg, err := ioutil.ReadAll(req.Body)
-	if err != nil {
-		log.Print(err)
-	}
+	printIf(err)
 	msg := smtpH.MailMessage(string(emailMsg), req.FormValue("subject"), req.FormValue("msg"))
 	_, err = wc.Write([]byte(msg))
-	if err != nil {
-		log.Print(err)
-	}
+	printIf(err)
 
 	err = wc.Close()
-	if err != nil {
-		log.Print(err)
-	}
+	printIf(err)
 
 	// Send the QUIT command and close the connection.
 	err = c.Quit()
-	if err != nil {
-		log.Print(err)
-	}
+	printIf(err)
 	return nil
 }
 
