@@ -71,14 +71,14 @@ type SmtpHandler struct {
 	defaults   map[string]string
 }
 
-func (smtpH *SmtpHandler) reqFieldOrDefault(req *http.Request, field string) string {
+func (s *SmtpHandler) reqFieldOrDefault(req *http.Request, field string) string {
 	if f := req.FormValue(field); f != "" {
 		return f
 	}
-	return smtpH.defaults[field]
+	return s.defaults[field]
 }
 
-func (smtpH *SmtpHandler) newMailFromRequest(req *http.Request) (*mail, error) {
+func (s *SmtpHandler) newMailFromRequest(req *http.Request) (*mail, error) {
 	var body string
 	if req.Method == http.MethodPost {
 		b, err := ioutil.ReadAll(req.Body)
@@ -90,10 +90,10 @@ func (smtpH *SmtpHandler) newMailFromRequest(req *http.Request) (*mail, error) {
 	}
 
 	m := &mail{
-		to:      smtpH.reqFieldOrDefault(req, "to"),
-		from:    smtpH.reqFieldOrDefault(req, "from"),
-		subject: smtpH.reqFieldOrDefault(req, "subject"),
-		body:    smtpH.reqFieldOrDefault(req, "msg"),
+		to:      s.reqFieldOrDefault(req, "to"),
+		from:    s.reqFieldOrDefault(req, "from"),
+		subject: s.reqFieldOrDefault(req, "subject"),
+		body:    s.reqFieldOrDefault(req, "msg"),
 	}
 
 	if m.body == "" && body != "" {
@@ -101,8 +101,8 @@ func (smtpH *SmtpHandler) newMailFromRequest(req *http.Request) (*mail, error) {
 		m.body = body
 	}
 
-	if smtpH.lockedFrom != "" {
-		m.from = smtpH.lockedFrom
+	if s.lockedFrom != "" {
+		m.from = s.lockedFrom
 	}
 
 	if m.to == "" || m.from == "" || m.subject == "" || m.body == "" {
@@ -126,15 +126,15 @@ func respondOk(wr http.ResponseWriter, m *mail) {
 	wr.Write([]byte(m.String()))
 }
 
-func (smtpH *SmtpHandler) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
+func (s *SmtpHandler) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
 	log.Print(req.RemoteAddr + " | " + req.Method + " " + req.URL.String())
 
-	m, err := smtpH.newMailFromRequest(req)
+	m, err := s.newMailFromRequest(req)
 	if err != nil {
 		respondError(wr, err)
 	}
 
-	if err := smtp.SendMail(smtpH.smtpAddr, nil, m.from, strings.Split(m.to, ","), m.ForData()); err != nil {
+	if err := smtp.SendMail(s.smtpAddr, nil, m.from, strings.Split(m.to, ","), m.ForData()); err != nil {
 		respondError(wr, err)
 	} else {
 		respondOk(wr, m)
