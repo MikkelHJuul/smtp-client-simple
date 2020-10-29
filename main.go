@@ -44,12 +44,25 @@ func main() {
 	}
 }
 
+const (
+	rfc822LSep = "\r\n"
+	unixLSep   = "\n"
+)
+
 type mail struct {
 	from, to, subject, body string
 }
 
+func (m *mail) build(lsep string) string {
+	return fmt.Sprintf("From: %s%sTo: %s%sSubject: %s%s%s%s", m.from, lsep, m.to, lsep, m.subject, lsep, lsep, m.body)
+}
+
 func (m *mail) String() string {
-	return fmt.Sprintf("From: %s\nTo: %s\nSubject: %s\n\n%s\n", m.from, m.to, m.subject, m.body)
+	return m.build(unixLSep)
+}
+
+func (m *mail) ForData() []byte {
+	return []byte(m.build(rfc822LSep) + fmt.Sprintf("%s.%s", rfc822LSep, rfc822LSep))
 }
 
 type SmtpHandler struct {
@@ -121,41 +134,9 @@ func (smtpH *SmtpHandler) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
 		respondError(wr, err)
 	}
 
-	if err := smtpH.sendMail(m); err != nil {
+	if err := smtp.SendMail(smtpH.smtpAddr, nil, m.from, strings.Split(m.to, ","), m.ForData()); err != nil {
 		respondError(wr, err)
 	} else {
 		respondOk(wr, m)
 	}
-}
-
-func (smtpH *SmtpHandler) sendMail(m *mail) error {
-	log.Printf("Calling %s", smtpH.smtpAddr)
-	c, err := smtp.Dial(smtpH.smtpAddr)
-	if err != nil {
-		return fmt.Errorf("Error dialing smtp server: %s", err)
-	}
-
-	if err := c.Mail(m.from); err != nil {
-		return fmt.Errorf("Error sending MAIL FROM: %s", err)
-	}
-
-	for _, to := range strings.Split(m.to, ",") {
-		if err := c.Rcpt(to); err != nil {
-			return fmt.Errorf("Error sending RCPT TO: %s", err)
-		}
-	}
-
-	// Send the email body.
-	wc, err := c.Data()
-	if err != nil {
-		return fmt.Errorf("Error sending DATA command: %s", err)
-	}
-	if _, err = wc.Write([]byte(m.String())); err != nil {
-		return fmt.Errorf("Error writing DATA: %s", err)
-	}
-	if err := wc.Close(); err != nil {
-		return fmt.Errorf("Error closing connection: %s", err)
-	}
-
-	return c.Quit()
 }
