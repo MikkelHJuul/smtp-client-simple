@@ -2,47 +2,41 @@ package main
 
 import (
 	"errors"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"net/smtp"
-	"os"
-	"regexp"
 	"strings"
 )
 
+var (
+	port     = flag.Int("port", 8080, "Port to listen on.")
+	smtpAddr = flag.String("smtp_server", "", "Default server:port for smtp communications.")
+	defFrom  = flag.String("from", "", "Default sender address.")
+	defTo    = flag.String("to", "", "Default recipient address.")
+	defSubj  = flag.String("subject", "", "Default message subject.")
+	defMsg   = flag.String("message", "", "Default mail text.")
+	reqFrom  = flag.String("forced_from", "", "If set, this is the sender, regardless of request parameters.")
+)
+
 func main() {
-	port := valueFromENVorDefault("port", "8080")
 	fmt.Printf("Initiating Handler")
 	handler := SmtpHandler{
-		smtpAddr:       valueFromENVorDefault("smtpAddr", ""),
-		defaultFrom:    valueFromENVorDefault("defaultFrom", ""),
-		defaultTo:      valueFromENVorDefault("defaultTo", ""),
-		defaultSubject: valueFromENVorDefault("defaultSubject", ""),
-		defaultBody:    valueFromENVorDefault("defaultBody", ""),
-		lockFrom:       valueFromENVorDefault("lockFrom", ""),
+		smtpAddr:       *smtpAddr,
+		defaultFrom:    *defFrom,
+		defaultTo:      *defTo,
+		defaultSubject: *defSubj,
+		defaultBody:    *defMsg,
+		lockFrom:       *reqFrom,
 	}
 
-	fmt.Printf("Smtp server listening on port %s.\n", port)
-	err := http.ListenAndServe(":"+port, &handler)
+	fmt.Printf("Smtp server listening on port %d.\n", *port)
+	err := http.ListenAndServe(fmt.Sprintf(":%d", *port), &handler)
 	if err != nil {
 		panic(err)
 	}
-}
-
-//https://stackoverflow.com/questions/56616196/how-to-convert-camel-case-string-to-snake-case
-var matchFirstCap = regexp.MustCompile("(.)([A-Z][a-z]+)")
-var matchAllCap = regexp.MustCompile("([a-z0-9])([A-Z])")
-
-func toScreamingSnakeCase(str string) string {
-	snake := matchFirstCap.ReplaceAllString(str, "${1}_${2}")
-	snake = matchAllCap.ReplaceAllString(snake, "${1}_${2}")
-	return strings.ToUpper(snake)
-}
-
-func valueFromENVorDefault(name string, deflt string) string {
-	return valueOrDefault(os.Getenv(toScreamingSnakeCase(name)), deflt)
 }
 
 func valueOrDefault(val string, deflt string) string {
