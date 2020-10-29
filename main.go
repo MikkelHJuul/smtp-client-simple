@@ -23,14 +23,18 @@ var (
 )
 
 func main() {
+	flag.Parse()
+
 	log.Print("Initiating Handler")
 	handler := SmtpHandler{
-		smtpAddr:       *smtpAddr,
-		defaultFrom:    *defFrom,
-		defaultTo:      *defTo,
-		defaultSubject: *defSubj,
-		defaultBody:    *defMsg,
-		lockFrom:       *reqFrom,
+		smtpAddr:   *smtpAddr,
+		lockedFrom: *reqFrom,
+		defaults: map[string]string{
+			"to":      *defTo,
+			"from":    *defFrom,
+			"subject": *defSubj,
+			"body":    *defMsg,
+		},
 	}
 
 	log.Printf("Smtp server listening on port %d.\n", *port)
@@ -40,118 +44,118 @@ func main() {
 	}
 }
 
-func valueOrDefault(val string, deflt string) string {
-	if val == "" {
-		return deflt
-	}
-	return val
+type mail struct {
+	from, to, subject, body string
+}
+
+func (m *mail) String() string {
+	return fmt.Sprintf("From: %s\nTo: %s\nSubject: %s\n\n%s\n", m.from, m.to, m.subject, m.body)
 }
 
 type SmtpHandler struct {
-	smtpAddr, defaultFrom, defaultTo, defaultSubject, defaultBody, lockFrom string
+	smtpAddr   string
+	lockedFrom string
+	defaults   map[string]string
+}
+
+func (smtpH *SmtpHandler) reqFieldOrDefault(req *http.Request, field string) string {
+	if f := req.FormValue(field); f != "" {
+		return f
+	}
+	return smtpH.defaults[field]
+}
+
+func (smtpH *SmtpHandler) newMailFromRequest(req *http.Request) (*mail, error) {
+	var body string
+	if req.Method == http.MethodPost {
+		b, err := ioutil.ReadAll(req.Body)
+		if err != nil {
+			return nil, err
+		}
+		log.Print("Got mail message body from POST.")
+		body = string(b)
+	}
+
+	m := &mail{
+		to:      smtpH.reqFieldOrDefault(req, "to"),
+		from:    smtpH.reqFieldOrDefault(req, "from"),
+		subject: smtpH.reqFieldOrDefault(req, "subject"),
+		body:    smtpH.reqFieldOrDefault(req, "msg"),
+	}
+
+	if m.body == "" && body != "" {
+		log.Print("Using mail body from POST.")
+		m.body = body
+	}
+
+	if smtpH.lockedFrom != "" {
+		m.from = smtpH.lockedFrom
+	}
+
+	if m.to == "" || m.from == "" || m.subject == "" || m.body == "" {
+		return nil, errors.New("Missing field in mail. Set appropriate query params (to, from, subject) and either set msg as query param or send POST body.")
+	}
+
+	return m, nil
+}
+
+func respondError(wr http.ResponseWriter, err error) {
+	wr.Header().Add("Content-Type", "text/plain")
+	wr.WriteHeader(400)
+	// Careful here about leaking info to an attacker...
+	_, _ = fmt.Fprintf(wr, err.Error())
+}
+
+func respondOk(wr http.ResponseWriter, m *mail) {
+	wr.Header().Add("Content-Type", "text/plain")
+	wr.WriteHeader(200)
+
+	wr.Write([]byte(m.String()))
 }
 
 func (smtpH *SmtpHandler) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
 	log.Print(req.RemoteAddr + " | " + req.Method + " " + req.URL.String())
-	if err := smtpH.sendMail(req); err != nil {
-		serverError(wr, err)
-	} else {
-		serveHTTP(wr, req)
-	}
-}
 
-func serverError(wr http.ResponseWriter, err error) {
-	wr.Header().Add("Content-Type", "text/plain")
-	wr.WriteHeader(400)
-	_, _ = fmt.Fprintf(wr, err.Error())
-}
-
-func (smtpH *SmtpHandler) getFromMail(requestFrom string) string {
-	if smtpH.lockFrom != "" {
-		return smtpH.lockFrom
-	}
-	if requestFrom != "" {
-		return requestFrom
-	}
-	return smtpH.defaultFrom
-}
-
-func printIf(err error) {
+	m, err := smtpH.newMailFromRequest(req)
 	if err != nil {
-		log.Print(err)
+		respondError(wr, err)
+	}
+
+	if err := smtpH.sendMail(m); err != nil {
+		respondError(wr, err)
+	} else {
+		respondOk(wr, m)
 	}
 }
 
-func (smtpH *SmtpHandler) sendMail(req *http.Request) error {
-	// Connect to the remote SMTP server.
+func (smtpH *SmtpHandler) sendMail(m *mail) error {
+	log.Printf("Calling %s", smtpH.smtpAddr)
 	c, err := smtp.Dial(smtpH.smtpAddr)
-	printIf(err)
+	if err != nil {
+		return fmt.Errorf("Error dialing smtp server: %s", err)
+	}
 
-	if fromMail := smtpH.getFromMail(req.FormValue("from")); fromMail == "" {
-		return errors.New("you have to set the query-parameter 'from', or this server-instance is mis-configured")
-	} else {
-		// Set the sender and recipient first
-		err = c.Mail(fromMail)
-		printIf(err)
+	if err := c.Mail(m.from); err != nil {
+		return fmt.Errorf("Error sending MAIL FROM: %s", err)
 	}
-	toMail, ok := req.Form["to"]
-	if !ok {
-		if smtpH.defaultTo != "" {
-			err = c.Rcpt(smtpH.defaultTo)
-			printIf(err)
-		} else {
-			return errors.New("you have to set the query-parameter 'to'")
+
+	for _, to := range strings.Split(m.to, ",") {
+		if err := c.Rcpt(to); err != nil {
+			return fmt.Errorf("Error sending RCPT TO: %s", err)
 		}
-	}
-	for _, mail := range toMail {
-		err = c.Rcpt(mail)
-		printIf(err)
 	}
 
 	// Send the email body.
 	wc, err := c.Data()
-	printIf(err)
-	emailMsg, err := ioutil.ReadAll(req.Body)
-	printIf(err)
-	msg := smtpH.MailMessage(string(emailMsg), req.FormValue("subject"), req.FormValue("msg"))
-	_, err = wc.Write([]byte(msg))
-	printIf(err)
-
-	err = wc.Close()
-	printIf(err)
-
-	// Send the QUIT command and close the connection.
-	err = c.Quit()
-	printIf(err)
-	return nil
-}
-
-func (smtpH *SmtpHandler) MailMessage(msgFromBody string, subjFromQuery string, msgFromQuery string) string {
-	if msgFromBody != "" {
-		if strings.Contains(msgFromBody, "Subject: ") {
-			return msgFromBody //if anyone ever writes 'Subject: ' somewhere in the mail... this happens
-		}
-		if subject := valueOrDefault(subjFromQuery, smtpH.defaultSubject); subject != "" {
-			return "Subject: " + subject + "\n\n" + msgFromBody
-		}
-		return msgFromBody
+	if err != nil {
+		return fmt.Errorf("Error sending DATA command: %s", err)
 	}
-	msg := valueOrDefault(msgFromQuery, smtpH.defaultBody)
-	if subject := valueOrDefault(subjFromQuery, smtpH.defaultSubject); subject != "" {
-		return "Subject: " + subject + "\n\n" + msg
+	if _, err = wc.Write([]byte(m.String())); err != nil {
+		return fmt.Errorf("Error writing DATA: %s", err)
 	}
-	return msg
-}
-
-func serveHTTP(wr http.ResponseWriter, req *http.Request) {
-	wr.Header().Add("Content-Type", "text/plain")
-	wr.WriteHeader(200)
-
-	_, _ = fmt.Fprintf(wr, "%s %s %s\n", req.Proto, req.Method, req.URL)
-	_, _ = fmt.Fprintf(wr, "Host: %s\n", req.Host)
-	for key, values := range req.Form {
-		for _, value := range values {
-			_, _ = fmt.Fprintf(wr, "%s: %s\n", key, value)
-		}
+	if err := wc.Close(); err != nil {
+		return fmt.Errorf("Error closing connection: %s", err)
 	}
+
+	return c.Quit()
 }
