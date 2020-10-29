@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"net/smtp"
+	"os"
 	"strings"
 )
 
@@ -22,7 +23,7 @@ var (
 )
 
 func main() {
-	fmt.Printf("Initiating Handler")
+	log.Print("Initiating Handler")
 	handler := SmtpHandler{
 		smtpAddr:       *smtpAddr,
 		defaultFrom:    *defFrom,
@@ -32,10 +33,10 @@ func main() {
 		lockFrom:       *reqFrom,
 	}
 
-	fmt.Printf("Smtp server listening on port %d.\n", *port)
-	err := http.ListenAndServe(fmt.Sprintf(":%d", *port), &handler)
-	if err != nil {
-		panic(err)
+	log.Printf("Smtp server listening on port %d.\n", *port)
+	if err := http.ListenAndServe(fmt.Sprintf(":%d", *port), &handler); err != nil {
+		log.Print(err)
+		os.Exit(1)
 	}
 }
 
@@ -51,7 +52,7 @@ type SmtpHandler struct {
 }
 
 func (smtpH *SmtpHandler) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
-	fmt.Println(req.RemoteAddr + " | " + req.Method + " " + req.URL.String())
+	log.Print(req.RemoteAddr + " | " + req.Method + " " + req.URL.String())
 	if err := smtpH.sendMail(req); err != nil {
 		serverError(wr, err)
 	} else {
