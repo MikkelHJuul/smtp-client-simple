@@ -117,26 +117,14 @@ func (smtpH *SmtpHandler) sendMail(req *http.Request) error {
 	if err != nil {
 		log.Print(err)
 	}
-	if subject := valueOrDefault(req.FormValue("subject"), smtpH.defaultSubject); subject != "" {
-		_, err = fmt.Fprintf(wc, "Subject: "+subject+"\n\n")
-	}
-	if err != nil {
-		log.Print(err)
-	}
-	defer req.Body.Close()
 	emailMsg, err := ioutil.ReadAll(req.Body)
 	if err != nil {
 		log.Print(err)
 	}
-	if len(emailMsg) != 0 {
-		_, _ = wc.Write(emailMsg)
-	} else {
-		if body := valueOrDefault(req.FormValue("msg"), smtpH.defaultBody); body != "" {
-			_, err = wc.Write([]byte(body))
-			if err != nil {
-				log.Print(err)
-			}
-		}
+	msg := smtpH.MailMessage(string(emailMsg), req.FormValue("subject"), req.FormValue("msg"))
+	_, err = wc.Write([]byte(msg))
+	if err != nil {
+		log.Print(err)
 	}
 
 	err = wc.Close()
@@ -150,6 +138,23 @@ func (smtpH *SmtpHandler) sendMail(req *http.Request) error {
 		log.Print(err)
 	}
 	return nil
+}
+
+func (smtpH *SmtpHandler) MailMessage(msgFromBody string, subjFromQuery string, msgFromQuery string) string {
+	if msgFromBody != "" {
+		if strings.Contains(msgFromBody, "Subject: ") {
+			return msgFromBody //if anyone ever writes 'Subject: ' somewhere in the mail... this happens
+		}
+		if subject := valueOrDefault(subjFromQuery, smtpH.defaultSubject); subject != "" {
+			return "Subject: " + subject + "\n\n" + msgFromBody
+		}
+		return msgFromBody
+	}
+	msg := valueOrDefault(msgFromQuery, smtpH.defaultBody)
+	if subject := valueOrDefault(subjFromQuery, smtpH.defaultSubject); subject != "" {
+		return "Subject: " + subject + "\n\n" + msg
+	}
+	return msg
 }
 
 func serveHTTP(wr http.ResponseWriter, req *http.Request) {
