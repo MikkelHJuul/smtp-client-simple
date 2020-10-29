@@ -54,7 +54,7 @@ type mail struct {
 }
 
 func (m *mail) build(lsep string) string {
-	return fmt.Sprintf("From: %s%sTo: %s%sSubject: %s%s%s%s", m.from, lsep, m.to, lsep, m.subject, lsep, lsep, m.body)
+	return fmt.Sprintf("From: %s%sTo: %s%sSubject: %s%s%s%s%s", m.from, lsep, m.to, lsep, m.subject, lsep, lsep, m.body, lsep)
 }
 
 func (m *mail) String() string {
