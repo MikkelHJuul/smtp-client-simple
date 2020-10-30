@@ -122,12 +122,6 @@ func (s *SmtpHandler) newMailFromRequest(req *http.Request) (*mail, error) {
 		if strings.Contains(body, "Subject: ") {
 			m.subject = ""
 		}
-		if strings.Contains(body, "From: ") {
-			m.from = ""
-		}
-		if strings.Contains(body, "To: ") {
-			m.to = []string{""}
-		}
 	}
 
 	if s.lockedFrom != "" {
