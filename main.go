@@ -36,6 +36,12 @@ func main() {
 			"body":    *defMsg,
 		},
 	}
+	log.Printf("\t%s: %s", "smtp address", *smtpAddr)
+	log.Printf("\t%s: %s", "locked mail-from", *reqFrom)
+	log.Printf("\t%s: ", "mail-defaults")
+	for k, v := range handler.defaults {
+		log.Printf("\t\t%s: %s", k, v)
+	}
 
 	log.Printf("Smtp server listening on port %d.\n", *port)
 	if err := http.ListenAndServe(fmt.Sprintf(":%d", *port), &handler); err != nil {
@@ -130,7 +136,7 @@ func (s *SmtpHandler) newMailFromRequest(req *http.Request) (*mail, error) {
 	}
 
 	if len(m.to) == 0 || m.from == "" {
-		return nil, errors.New("missing fields in mail. Set appropriate parameters: to, from etc.")
+		return nil, errors.New("missing fields in mail. Set appropriate parameters: to, from")
 	}
 
 	return m, nil
