@@ -2,161 +2,141 @@ package main
 
 import (
 	"errors"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"net/smtp"
 	"os"
-	"regexp"
 	"strings"
 )
 
+var (
+	port     = flag.Int("port", 8080, "Port to listen on.")
+	smtpAddr = flag.String("smtp_server", "", "Default server:port for smtp communications.")
+	defFrom  = flag.String("from", "", "Default sender address.")
+	defTo    = flag.String("to", "", "Default recipient address.")
+	defSubj  = flag.String("subject", "", "Default message subject.")
+	defMsg   = flag.String("message", "", "Default mail text.")
+	reqFrom  = flag.String("forced_from", "", "If set, this is the sender, regardless of request parameters.")
+)
+
 func main() {
-	port := valueFromENVorDefault("port", "8080")
-	fmt.Printf("Initiating Handler")
+	flag.Parse()
+
+	log.Print("Initiating Handler")
 	handler := SmtpHandler{
-		smtpAddr:       valueFromENVorDefault("smtpAddr", ""),
-		defaultFrom:    valueFromENVorDefault("defaultFrom", ""),
-		defaultTo:      valueFromENVorDefault("defaultTo", ""),
-		defaultSubject: valueFromENVorDefault("defaultSubject", ""),
-		defaultBody:    valueFromENVorDefault("defaultBody", ""),
-		lockFrom:       valueFromENVorDefault("lockFrom", ""),
+		smtpAddr:   *smtpAddr,
+		lockedFrom: *reqFrom,
+		defaults: map[string]string{
+			"to":      *defTo,
+			"from":    *defFrom,
+			"subject": *defSubj,
+			"body":    *defMsg,
+		},
 	}
 
-	fmt.Printf("Smtp server listening on port %s.\n", port)
-	err := http.ListenAndServe(":"+port, &handler)
-	if err != nil {
-		panic(err)
+	log.Printf("Smtp server listening on port %d.\n", *port)
+	if err := http.ListenAndServe(fmt.Sprintf(":%d", *port), &handler); err != nil {
+		log.Print(err)
+		os.Exit(1)
 	}
 }
 
-//https://stackoverflow.com/questions/56616196/how-to-convert-camel-case-string-to-snake-case
-var matchFirstCap = regexp.MustCompile("(.)([A-Z][a-z]+)")
-var matchAllCap = regexp.MustCompile("([a-z0-9])([A-Z])")
+const (
+	rfc822LSep = "\r\n"
+	unixLSep   = "\n"
+)
 
-func toScreamingSnakeCase(str string) string {
-	snake := matchFirstCap.ReplaceAllString(str, "${1}_${2}")
-	snake = matchAllCap.ReplaceAllString(snake, "${1}_${2}")
-	return strings.ToUpper(snake)
+type mail struct {
+	from, to, subject, body string
 }
 
-func valueFromENVorDefault(name string, deflt string) string {
-	return valueOrDefault(os.Getenv(toScreamingSnakeCase(name)), deflt)
+func (m *mail) build(lsep string) string {
+	return fmt.Sprintf("From: %s%sTo: %s%sSubject: %s%s%s%s%s", m.from, lsep, m.to, lsep, m.subject, lsep, lsep, m.body, lsep)
 }
 
-func valueOrDefault(val string, deflt string) string {
-	if val == "" {
-		return deflt
-	}
-	return val
+func (m *mail) String() string {
+	return m.build(unixLSep)
+}
+
+func (m *mail) ForData() []byte {
+	return []byte(m.build(rfc822LSep) + fmt.Sprintf("%s.%s", rfc822LSep, rfc822LSep))
 }
 
 type SmtpHandler struct {
-	smtpAddr, defaultFrom, defaultTo, defaultSubject, defaultBody, lockFrom string
+	smtpAddr   string
+	lockedFrom string
+	defaults   map[string]string
 }
 
-func (smtpH *SmtpHandler) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
-	fmt.Println(req.RemoteAddr + " | " + req.Method + " " + req.URL.String())
-	if err := smtpH.sendMail(req); err != nil {
-		serverError(wr, err)
-	} else {
-		serveHTTP(wr, req)
+func (s *SmtpHandler) reqFieldOrDefault(req *http.Request, field string) string {
+	if f := req.FormValue(field); f != "" {
+		return f
 	}
+	return s.defaults[field]
 }
 
-func serverError(wr http.ResponseWriter, err error) {
+func (s *SmtpHandler) newMailFromRequest(req *http.Request) (*mail, error) {
+	var body string
+	if req.Method == http.MethodPost {
+		b, err := ioutil.ReadAll(req.Body)
+		if err != nil {
+			return nil, err
+		}
+		log.Print("Got mail message body from POST.")
+		body = string(b)
+	}
+
+	m := &mail{
+		to:      s.reqFieldOrDefault(req, "to"),
+		from:    s.reqFieldOrDefault(req, "from"),
+		subject: s.reqFieldOrDefault(req, "subject"),
+		body:    s.reqFieldOrDefault(req, "msg"),
+	}
+
+	if m.body == "" && body != "" {
+		log.Print("Using mail body from POST.")
+		m.body = body
+	}
+
+	if s.lockedFrom != "" {
+		m.from = s.lockedFrom
+	}
+
+	if m.to == "" || m.from == "" || m.subject == "" || m.body == "" {
+		return nil, errors.New("Missing field in mail. Set appropriate query params (to, from, subject) and either set msg as query param or send POST body.")
+	}
+
+	return m, nil
+}
+
+func respondError(wr http.ResponseWriter, err error) {
 	wr.Header().Add("Content-Type", "text/plain")
 	wr.WriteHeader(400)
+	// Careful here about leaking info to an attacker...
 	_, _ = fmt.Fprintf(wr, err.Error())
 }
 
-func (smtpH *SmtpHandler) getFromMail(requestFrom string) string {
-	if smtpH.lockFrom != "" {
-		return smtpH.lockFrom
-	}
-	if requestFrom != "" {
-		return requestFrom
-	}
-	return smtpH.defaultFrom
-}
-
-func printIf(err error) {
-	if err != nil {
-		log.Print(err)
-	}
-}
-
-func (smtpH *SmtpHandler) sendMail(req *http.Request) error {
-	// Connect to the remote SMTP server.
-	c, err := smtp.Dial(smtpH.smtpAddr)
-	printIf(err)
-
-	if fromMail := smtpH.getFromMail(req.FormValue("from")); fromMail == "" {
-		return errors.New("you have to set the query-parameter 'from', or this server-instance is mis-configured")
-	} else {
-		// Set the sender and recipient first
-		err = c.Mail(fromMail)
-		printIf(err)
-	}
-	toMail, ok := req.Form["to"]
-	if !ok {
-		if smtpH.defaultTo != "" {
-			err = c.Rcpt(smtpH.defaultTo)
-			printIf(err)
-		} else {
-			return errors.New("you have to set the query-parameter 'to'")
-		}
-	}
-	for _, mail := range toMail {
-		err = c.Rcpt(mail)
-		printIf(err)
-	}
-
-	// Send the email body.
-	wc, err := c.Data()
-	printIf(err)
-	emailMsg, err := ioutil.ReadAll(req.Body)
-	printIf(err)
-	msg := smtpH.MailMessage(string(emailMsg), req.FormValue("subject"), req.FormValue("msg"))
-	_, err = wc.Write([]byte(msg))
-	printIf(err)
-
-	err = wc.Close()
-	printIf(err)
-
-	// Send the QUIT command and close the connection.
-	err = c.Quit()
-	printIf(err)
-	return nil
-}
-
-func (smtpH *SmtpHandler) MailMessage(msgFromBody string, subjFromQuery string, msgFromQuery string) string {
-	if msgFromBody != "" {
-		if strings.Contains(msgFromBody, "Subject: ") {
-			return msgFromBody //if anyone ever writes 'Subject: ' somewhere in the mail... this happens
-		}
-		if subject := valueOrDefault(subjFromQuery, smtpH.defaultSubject); subject != "" {
-			return "Subject: " + subject + "\n\n" + msgFromBody
-		}
-		return msgFromBody
-	}
-	msg := valueOrDefault(msgFromQuery, smtpH.defaultBody)
-	if subject := valueOrDefault(subjFromQuery, smtpH.defaultSubject); subject != "" {
-		return "Subject: " + subject + "\n\n" + msg
-	}
-	return msg
-}
-
-func serveHTTP(wr http.ResponseWriter, req *http.Request) {
+func respondOk(wr http.ResponseWriter, m *mail) {
 	wr.Header().Add("Content-Type", "text/plain")
 	wr.WriteHeader(200)
 
-	_, _ = fmt.Fprintf(wr, "%s %s %s\n", req.Proto, req.Method, req.URL)
-	_, _ = fmt.Fprintf(wr, "Host: %s\n", req.Host)
-	for key, values := range req.Form {
-		for _, value := range values {
-			_, _ = fmt.Fprintf(wr, "%s: %s\n", key, value)
-		}
+	wr.Write([]byte(m.String()))
+}
+
+func (s *SmtpHandler) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
+	log.Print(req.RemoteAddr + " | " + req.Method + " " + req.URL.String())
+
+	m, err := s.newMailFromRequest(req)
+	if err != nil {
+		respondError(wr, err)
+	}
+
+	if err := smtp.SendMail(s.smtpAddr, nil, m.from, strings.Split(m.to, ","), m.ForData()); err != nil {
+		respondError(wr, err)
+	} else {
+		respondOk(wr, m)
 	}
 }
