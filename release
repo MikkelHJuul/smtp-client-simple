@@ -1,0 +1,8 @@
+#!/bin/bash
+
+[ -z $1 ] && exit 2
+
+docker build -t mjuul/smtp-client-simple:$1 .
+docker tag mjuul/smtp-client-simple:$1 mjuul/smtp-client-simple:latest
+docker push mjuul/smtp-client-simple:$1
+docker push mjuul/smtp-client-simple:latest
