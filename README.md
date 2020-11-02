@@ -10,4 +10,4 @@ And will add any http body content, as the email body.
 I use it in pipelines exposing our smtp-server. For custom notifications.
 
 ## TODO 
-* tls
+* insecure / log-in - including a locked address?

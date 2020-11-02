@@ -44,6 +44,9 @@ func main() {
 	for k, v := range handler.defaults {
 		log.Printf("\t\t%s: %s", k, v)
 	}
+	if *skipTls {
+		log.Printf("\t%s", "WARN: this instance is running without tls")
+	}
 
 	log.Printf("Smtp server listening on port %d.\n", *port)
 	if err := http.ListenAndServe(fmt.Sprintf(":%d", *port), &handler); err != nil {
