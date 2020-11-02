@@ -71,6 +71,7 @@ func (m *mail) build(lsep string) string {
 		subject = ""
 		body    = ""
 	)
+	fromTo = fmt.Sprintf("From: %s%sTo: %s%s", m.from, lsep, m.to, lsep)
 	if m.subject != "" {
 		subject = fmt.Sprintf("Subject: %s%s", m.subject, lsep)
 	}
@@ -172,7 +173,7 @@ func (s *SmtpHandler) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
 		return
 	}
 	if *skipTls {
-		err = s.SendMail(s.smtpAddr, m.from, m.to, m.ForData())
+		err = s.SendMail(s.smtpAddr, m.from, m.to, []byte(m.String()))
 	} else {
 		err = smtp.SendMail(s.smtpAddr, nil, m.from, m.to, m.ForData())
 	}
