@@ -20,6 +20,8 @@ var (
 	defSubj  = flag.String("subject", "", "Default message subject.")
 	defMsg   = flag.String("message", "", "Default mail text.")
 	reqFrom  = flag.String("forced-from", "", "If set, this is the sender, regardless of request parameters.")
+	//insecure  = flag.Bool("insecure", false, "using the insecure flag disables log in to the smtp-server")
+	skipTls = flag.Bool("skip-tls", false, "skip tls in the transport to the smtp-server")
 )
 
 func main() {
@@ -163,10 +165,50 @@ func (s *SmtpHandler) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		respondError(wr, err)
 	}
-
-	if err := smtp.SendMail(s.smtpAddr, nil, m.from, m.to, m.ForData()); err != nil {
+	if *skipTls {
+		err = s.SendMail(s.smtpAddr, m.from, m.to, m.ForData())
+	} else {
+		err = smtp.SendMail(s.smtpAddr, nil, m.from, m.to, m.ForData())
+	}
+	if err != nil {
 		respondError(wr, err)
 	} else {
 		respondOk(wr, m)
 	}
+}
+
+func (s *SmtpHandler) SendMail(addr string, from string, to []string, data []byte) error {
+	c, err := smtp.Dial(addr)
+	if err != nil {
+		log.Print(err)
+	}
+
+	if err := c.Mail(from); err != nil {
+		return err
+	}
+
+	for _, mail := range to {
+		if err := c.Rcpt(mail); err != nil {
+			return err
+		}
+	}
+
+	// Send the email body.
+	wc, err := c.Data()
+	if err != nil {
+		return err
+	}
+	if _, err = wc.Write(data); err != nil {
+		return err
+	}
+
+	if err = wc.Close(); err != nil {
+		return err
+	}
+
+	// Send the QUIT command and close the connection.
+	if err = c.Quit(); err != nil {
+		return err
+	}
+	return nil
 }
