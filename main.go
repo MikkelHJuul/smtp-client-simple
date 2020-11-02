@@ -119,10 +119,13 @@ func (s *SmtpHandler) newMailFromRequest(req *http.Request) (*mail, error) {
 		log.Print("Got mail message body from POST.")
 		body = string(b)
 	}
+	if err := req.ParseForm(); err != nil {
+		return nil, err
+	}
 
 	m := &mail{
-		to:      s.reqFieldsOrDefault(req, "to"),
 		from:    s.reqFieldOrDefault(req, "from"),
+		to:      s.reqFieldsOrDefault(req, "to"),
 		subject: s.reqFieldOrDefault(req, "subject"),
 		body:    s.reqFieldOrDefault(req, "msg"),
 	}
@@ -151,14 +154,14 @@ func respondError(wr http.ResponseWriter, err error) {
 	wr.Header().Add("Content-Type", "text/plain")
 	wr.WriteHeader(400)
 	// Careful here about leaking info to an attacker...
-	_, _ = wr.Write([]byte(err.Error()))
+	_, _ = fmt.Fprintf(wr, err.Error())
 }
 
 func respondOk(wr http.ResponseWriter, m *mail) {
 	wr.Header().Add("Content-Type", "text/plain")
 	wr.WriteHeader(200)
 
-	_, _ = wr.Write([]byte(m.String()))
+	_, _ = fmt.Fprintf(wr, m.String())
 }
 
 func (s *SmtpHandler) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
@@ -167,6 +170,7 @@ func (s *SmtpHandler) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
 	m, err := s.newMailFromRequest(req)
 	if err != nil {
 		respondError(wr, err)
+		return
 	}
 	if *skipTls {
 		err = s.SendMail(s.smtpAddr, m.from, m.to, m.ForData())
@@ -174,6 +178,7 @@ func (s *SmtpHandler) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
 		err = smtp.SendMail(s.smtpAddr, nil, m.from, m.to, m.ForData())
 	}
 	if err != nil {
+		log.Printf("got error from mail send-method: %s", err.Error())
 		respondError(wr, err)
 	} else {
 		respondOk(wr, m)
