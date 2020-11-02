@@ -55,11 +55,6 @@ func main() {
 	}
 }
 
-const (
-	rfc822LSep = "\r\n"
-	unixLSep   = "\n"
-)
-
 type mail struct {
 	from, subject, body string
 	to                  []string
@@ -79,14 +74,6 @@ func (m *mail) build(lsep string) string {
 		body = fmt.Sprintf("%s%s", lsep, m.body)
 	}
 	return fromTo + subject + body
-}
-
-func (m *mail) String() string {
-	return m.build(unixLSep)
-}
-
-func (m *mail) ForData() []byte {
-	return []byte(m.build(rfc822LSep))
 }
 
 type SmtpHandler struct {
@@ -109,18 +96,18 @@ func (s *SmtpHandler) reqFieldsOrDefault(req *http.Request, field string) []stri
 	return strings.Split(s.defaults[field], ",")
 }
 
-func (s *SmtpHandler) newMailFromRequest(req *http.Request) (*mail, error) {
+func (s *SmtpHandler) newMailFromRequest(req *http.Request) (*mail, string, error) {
 	var body string
 	if req.Method == http.MethodPost {
 		b, err := ioutil.ReadAll(req.Body)
 		if err != nil {
-			return nil, err
+			return nil, "", err
 		}
 		log.Print("Got mail message body from POST.")
 		body = string(b)
 	}
 	if err := req.ParseForm(); err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	m := &mail{
@@ -130,24 +117,16 @@ func (s *SmtpHandler) newMailFromRequest(req *http.Request) (*mail, error) {
 		body:    s.reqFieldOrDefault(req, "msg"),
 	}
 
-	if body != "" {
-		log.Print("Using mail body from POST.")
-		m.body = body
-		if strings.Contains(body, "Subject: ") {
-			m.subject = ""
-		}
-	}
-
 	if s.lockedFrom != "" {
 		m.from = s.lockedFrom
 		//From/To in the mail body may be set differently - how does that work?
 	}
 
 	if len(m.to) == 0 || m.from == "" {
-		return nil, errors.New("missing fields in mail. Set appropriate parameters: to, from")
+		return nil, "", errors.New("missing fields in mail. Set appropriate parameters: to, from")
 	}
 
-	return m, nil
+	return m, body, nil
 }
 
 func respondError(wr http.ResponseWriter, err error) {
@@ -161,21 +140,27 @@ func respondOk(wr http.ResponseWriter, m *mail) {
 	wr.Header().Add("Content-Type", "text/plain")
 	wr.WriteHeader(200)
 
-	_, _ = fmt.Fprintf(wr, m.String())
+	_, _ = fmt.Fprintf(wr, m.build("\n"))
 }
 
 func (s *SmtpHandler) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
 	log.Print(req.RemoteAddr + " | " + req.Method + " " + req.URL.String())
 
-	m, err := s.newMailFromRequest(req)
+	m, postBody, err := s.newMailFromRequest(req)
 	if err != nil {
 		respondError(wr, err)
 		return
 	}
-	if *skipTls {
-		err = s.SendMail(s.smtpAddr, m.from, m.to, []byte(m.String()))
+	var body []byte
+	if postBody != "" {
+		body = []byte(postBody)
 	} else {
-		err = smtp.SendMail(s.smtpAddr, nil, m.from, m.to, m.ForData())
+		body = []byte(m.build("\n"))
+	}
+	if *skipTls {
+		err = s.SendMail(s.smtpAddr, m.from, m.to, body)
+	} else {
+		err = smtp.SendMail(s.smtpAddr, nil, m.from, m.to, body)
 	}
 	if err != nil {
 		log.Printf("got error from mail send-method: %s", err.Error())
