@@ -1,8 +1,18 @@
 #!/bin/bash
 
-[ -z $1 ] && exit 2
+version=$(cat VERSION)
+patch_num=${version##*.}
+new_version=${version%.*}.$(($patch_num + 1))
+new_version=${1:-$new_version}
+echo $new_version > VERSION
 
-docker build -t mjuul/smtp-client-simple:$1 .
-docker tag mjuul/smtp-client-simple:$1 mjuul/smtp-client-simple:latest
-docker push mjuul/smtp-client-simple:$1
+git add VERSION
+git commit -m "changed version number to $new_version"
+git tag v$new_version
+git push origin main
+git push origin v$new_version
+
+docker build -t mjuul/smtp-client-simple:$new_version .
+docker tag mjuul/smtp-client-simple:$new_version mjuul/smtp-client-simple:latest
+docker push mjuul/smtp-client-simple:$new_version
 docker push mjuul/smtp-client-simple:latest
