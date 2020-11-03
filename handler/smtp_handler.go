@@ -31,28 +31,37 @@ func (m *mail) build(lsep string) string {
 	return fromTo + subject + body
 }
 
-type SmtpHandler struct {
+func SmtpHandler(smtpAddr string, lockedFrom string, skipTls bool, defaults map[string]string) *smtpHandler {
+	return &smtpHandler{
+		smtpAddr:   smtpAddr,
+		lockedFrom: lockedFrom,
+		defaults:   defaults,
+		skipTls:    skipTls,
+	}
+}
+
+type smtpHandler struct {
 	smtpAddr   string
 	lockedFrom string
 	defaults   map[string]string
 	skipTls    bool
 }
 
-func (s *SmtpHandler) reqFieldOrDefault(req *http.Request, field string) string {
+func (s *smtpHandler) reqFieldOrDefault(req *http.Request, field string) string {
 	if f := req.FormValue(field); f != "" {
 		return f
 	}
 	return s.defaults[field]
 }
 
-func (s *SmtpHandler) reqFieldsOrDefault(req *http.Request, field string) []string {
+func (s *smtpHandler) reqFieldsOrDefault(req *http.Request, field string) []string {
 	if f := req.Form[field]; len(f) != 0 {
 		return f
 	}
 	return strings.Split(s.defaults[field], ",")
 }
 
-func (s *SmtpHandler) newMailFromRequest(req *http.Request) (*mail, string, error) {
+func (s *smtpHandler) newMailFromRequest(req *http.Request) (*mail, string, error) {
 	var body string
 	if req.Method == http.MethodPost {
 		b, err := ioutil.ReadAll(req.Body)
@@ -99,7 +108,7 @@ func respondOk(wr http.ResponseWriter, m *mail) {
 	_, _ = fmt.Fprintf(wr, m.build("\n"))
 }
 
-func (s *SmtpHandler) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
+func (s *smtpHandler) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
 	log.Print(req.RemoteAddr + " | " + req.Method + " " + req.URL.String())
 
 	m, postBody, err := s.newMailFromRequest(req)
@@ -126,7 +135,7 @@ func (s *SmtpHandler) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (s *SmtpHandler) SendMail(addr string, from string, to []string, data []byte) error {
+func (s *smtpHandler) SendMail(addr string, from string, to []string, data []byte) error {
 	c, err := smtp.Dial(addr)
 	if err != nil {
 		log.Print(err)

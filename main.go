@@ -23,31 +23,26 @@ var (
 
 func main() {
 	flag.Parse()
-
-	log.Print("Initiating Handler")
-	handler := SmtpHandler{
-		smtpAddr:   *smtpAddr,
-		lockedFrom: *reqFrom,
-		skipTls:    *skipTls,
-		defaults: map[string]string{
-			"to":      *defTo,
-			"from":    *defFrom,
-			"subject": *defSubj,
-			"body":    *defMsg,
-		},
+	defaultValues := map[string]string{
+		"to":      *defTo,
+		"from":    *defFrom,
+		"subject": *defSubj,
+		"body":    *defMsg,
 	}
+	log.Print("Initiating Handler")
+	h := handler.SmtpHandler(*smtpAddr, *reqFrom, *skipTls, defaultValues)
 	log.Printf("\t%s: %s", "smtp address", *smtpAddr)
 	log.Printf("\t%s: %s", "locked mail-from", *reqFrom)
 	log.Printf("\t%s: ", "mail-defaults")
-	for k, v := range handler.defaults {
+	for k, v := range defaultValues {
 		log.Printf("\t\t%s: %s", k, v)
 	}
 	if *skipTls {
-		log.Printf("\t%s", "WARN: this instance is running without tls")
+		log.Printf("%s", "WARN: this instance is running without tls")
 	}
 
 	log.Printf("Smtp server listening on port %d.\n", *port)
-	if err := http.ListenAndServe(fmt.Sprintf(":%d", *port), &handler); err != nil {
+	if err := http.ListenAndServe(fmt.Sprintf(":%d", *port), h); err != nil {
 		log.Print(err)
 		os.Exit(1)
 	}
