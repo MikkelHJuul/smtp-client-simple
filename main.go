@@ -66,7 +66,7 @@ func (m *mail) build(lsep string) string {
 		subject = ""
 		body    = ""
 	)
-	fromTo = fmt.Sprintf("From: %s%sTo: %s%s", m.from, lsep, m.to, lsep)
+	fromTo = fmt.Sprintf("From: %s%sTo: %s%s", m.from, lsep, strings.Join(m.to, ","), lsep)
 	if m.subject != "" {
 		subject = fmt.Sprintf("Subject: %s%s", m.subject, lsep)
 	}
