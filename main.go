@@ -31,6 +31,7 @@ func main() {
 	handler := SmtpHandler{
 		smtpAddr:   *smtpAddr,
 		lockedFrom: *reqFrom,
+		skipTls:    *skipTls,
 		defaults: map[string]string{
 			"to":      *defTo,
 			"from":    *defFrom,
@@ -80,6 +81,7 @@ type SmtpHandler struct {
 	smtpAddr   string
 	lockedFrom string
 	defaults   map[string]string
+	skipTls    bool
 }
 
 func (s *SmtpHandler) reqFieldOrDefault(req *http.Request, field string) string {
@@ -157,7 +159,7 @@ func (s *SmtpHandler) ServeHTTP(wr http.ResponseWriter, req *http.Request) {
 	} else {
 		body = []byte(m.build("\n"))
 	}
-	if *skipTls {
+	if s.skipTls {
 		err = s.SendMail(s.smtpAddr, m.from, m.to, body)
 	} else {
 		err = smtp.SendMail(s.smtpAddr, nil, m.from, m.to, body)
